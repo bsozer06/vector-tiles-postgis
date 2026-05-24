@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PostGIS Vector Tiles — Countries</title>
+  <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
+  <style>
+    body, html, #map { margin: 0; height: 100%; }
+    #panel {
+      position: absolute; top: 10px; left: 10px; z-index: 1;
+      background: rgba(255,255,255,.9); padding: 8px 12px; border-radius: 6px;
+      font: 13px/1.4 system-ui, sans-serif; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    }
+    #panel code { background: #eef; padding: 0 4px; border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">PostGIS → MVT → MapLibre · click a country</div>
+<script>
+  // Point this at the tile server. The TileJSON endpoint advertises the tile URLs.
+  const TILE_SERVER = "http://localhost:7800";
+  const LAYER = "countries";
+
+  const map = new maplibregl.Map({
+    container: "map",
+    style: {
+      version: 8,
+      sources: {
+        // light raster basemap for context
+        osm: {
+          type: "raster",
+          tiles: ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"],
+          tileSize: 256,
+          attribution: "© OpenStreetMap contributors"
+        }
+      },
+      layers: [{ id: "osm", type: "raster", source: "osm" }]
+    },
+    center: [0, 20],
+    zoom: 1.5
+  });
+
+  map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+  map.on("load", () => {
+    map.addSource(LAYER, {
+      type: "vector",
+      url: `${TILE_SERVER}/tiles/${LAYER}.json`
+    });
+
+    map.addLayer({
+      id: "countries-fill",
+      type: "fill",
+      source: LAYER,
+      "source-layer": LAYER, // matches the layer name passed to ST_AsMVT
+      paint: {
+        "fill-color": "#3388ff",
+        "fill-opacity": 0.35
+      }
+    });
+
+    map.addLayer({
+      id: "countries-line",
+      type: "line",
+      source: LAYER,
+      "source-layer": LAYER,
+      paint: {
+        "line-color": "#1f4e8a",
+        "line-width": 0.6
+      }
+    });
+
+    // Click a feature -> popup with its properties.
+    map.on("click", "countries-fill", (e) => {
+      const p = e.features[0].properties || {};
+      const title = p.name || p.admin || `gid ${p.gid}`;
+      const rows = Object.entries(p)
+        .map(([k, v]) => `<tr><td><b>${k}</b></td><td>${v}</td></tr>`)
+        .join("");
+      new maplibregl.Popup()
+        .setLngLat(e.lngLat)
+        .setHTML(`<strong>${title}</strong><table>${rows}</table>`)
+        .addTo(map);
+    });
+
+    map.on("mouseenter", "countries-fill", () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", "countries-fill", () => (map.getCanvas().style.cursor = ""));
+  });
+</script>
+</body>
+</html>
