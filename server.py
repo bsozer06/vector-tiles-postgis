@@ -37,7 +37,7 @@ MIN_ZOOM = 0
 MAX_ZOOM = 22
 MVT_MEDIA_TYPE = "application/vnd.mapbox-vector-tile"
 
-
+""" Opening and closing the database connection """
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.pool = await asyncpg.create_pool(
@@ -73,7 +73,7 @@ async def index(request: Request):
                 "tiles": f"{base}/tiles/{name}/{{z}}/{{x}}/{{y}}.pbf",
                 "tilejson": f"{base}/tiles/{name}.json",
             }
-            for name in LAYERS
+            for name in LAYERS      ##  dictionary comprehension in python !
         }
     }
 
